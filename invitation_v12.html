@@ -1458,49 +1458,46 @@ function sendViaWhatsApp(){
   setTimeout(()=>{ status.style.display='none'; }, 8000);
 }
 
-/* ─── FIREBASE CLOUD SAVE ─── */
-const INV_FB_KEY = 'AIzaSyAqRxptn8HmdGCKHvUzF8-s0o8qsFAA_2I';
-const INV_PROJECT = 'occasion-studio';
-const INV_FB_BASE = `https://firestore.googleapis.com/v1/projects/${INV_PROJECT}/databases/(default)/documents`;
+/* ─── JSONBIN CLOUD SAVE (free, no billing) ─── */
+const INV_JBIN_URL = 'https://api.jsonbin.io/v3/b';
 
 function gatherInviteData(){
-  const fields={};
-  const strIds=['n1','n2','hero-date','hero-venue','hero-time','hero-n1','hero-n2',
-    'detail-date','detail-time','detail-venue','detail-address','detail-dress',
-    'detail-note','scratch-text','wa-msg'];
-  strIds.forEach(id=>{
-    const el=document.getElementById(id);
-    if(el) fields[id]={stringValue:el.value||el.textContent||''};
-  });
-  fields['occ']={stringValue:document.body.className||''};
-  fields['savedAt']={stringValue:new Date().toISOString()};
-  // hero photo
+  const get = id => { const el=document.getElementById(id); return el?(el.value||el.textContent||''):''; };
   const heroImg=document.querySelector('#photo-inner img');
-  if(heroImg&&heroImg.src&&heroImg.src.startsWith('data:'))
-    fields['heroSrc']={stringValue:heroImg.src.slice(0,500000)};
-  return {fields};
+  return {
+    occ: document.body.className||'',
+    n1: get('n1'), n2: get('n2'),
+    heroDate: get('hero-date'), heroVenue: get('hero-venue'), heroTime: get('hero-time'),
+    heroN1: get('hero-n1'), heroN2: get('hero-n2'),
+    detailDate: get('detail-date'), detailTime: get('detail-time'),
+    detailVenue: get('detail-venue'), detailAddress: get('detail-address'),
+    detailDress: get('detail-dress'), detailNote: get('detail-note'),
+    scratchText: get('scratch-msg'), waMsg: get('wa-msg'),
+    invMsg: get('inv-msg'),
+    heroSrc: (heroImg&&heroImg.src&&heroImg.src.startsWith('data:')) ? heroImg.src.slice(0,200000) : '',
+    savedAt: new Date().toISOString()
+  };
 }
 
 async function saveInviteToCloud(){
   const status=document.getElementById('save-status');
   status.style.display='block';
   status.textContent='☁️ Saving to cloud…';
-  const docId='inv_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
   try{
-    const res=await fetch(`${INV_FB_BASE}/invitations/${docId}?key=${INV_FB_KEY}`,{
-      method:'PATCH',
-      headers:{'Content-Type':'application/json'},
+    const res=await fetch(INV_JBIN_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Bin-Private':'false'},
       body:JSON.stringify(gatherInviteData())
     });
-    if(!res.ok) throw new Error('Firebase '+res.status);
-    const shareUrl=`${location.origin}${location.pathname}?inv=${docId}`;
+    if(!res.ok) throw new Error('Save failed: '+res.status);
+    const json=await res.json();
+    const binId=json.metadata.id;
+    const shareUrl=`${location.origin}${location.pathname}?inv=${binId}`;
     navigator.clipboard.writeText(shareUrl).catch(()=>{});
-    status.textContent='✅ Saved! Link copied: '+shareUrl;
-    // also open WA with cloud link
-    const n1=document.getElementById('n1')?.value||'the hosts';
-    const waMsg=`🎉 You're invited!\n\nOpen this link to see your invitation:\n${shareUrl}\n\nWith love ❤️`;
-    setTimeout(()=>window.open('https://wa.me/?text='+encodeURIComponent(waMsg),'_blank'),600);
-    setTimeout(()=>{ status.style.display='none'; },10000);
+    const waMsg=`🎉 You're invited!\n\nOpen this link to see your beautiful invitation:\n${shareUrl}\n\nWith love ❤️`;
+    status.textContent=`✅ Link copied! Share it:\n${shareUrl}`;
+    setTimeout(()=>window.open('https://wa.me/?text='+encodeURIComponent(waMsg),'_blank'),800);
+    setTimeout(()=>{ status.style.display='none'; },12000);
   }catch(e){
     status.textContent='❌ Cloud save failed: '+e.message+'. Use Download instead.';
     setTimeout(()=>{ status.style.display='none'; },6000);

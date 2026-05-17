@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>A Birthday Surprise 🌸</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;font-family:'Lato',sans-serif}
+body{background:#fce4ec;position:relative}
+#particle-canvas{position:fixed;inset:0;pointer-events:none;z-index:9998}
+#app{position:fixed;inset:0;overflow:hidden}
+
+/* ═══ PAGE TRANSITIONS ═══ */
+.page{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;
+  overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+}
+.page.state-current{transform:translateX(0);opacity:1;pointer-events:auto;z-index:10;transition:transform .65s cubic-bezier(.77,0,.175,1),opacity .65s ease}
+.page.state-gone-left{transform:translateX(-110%);opacity:0;pointer-events:none;z-index:5;transition:transform .65s cubic-bezier(.77,0,.175,1),opacity .65s ease}
+.page.state-gone-right{transform:translateX(110%);opacity:0;pointer-events:none;z-index:5;transition:transform .65s cubic-bezier(.77,0,.175,1),opacity .65s ease}
+.page.state-wait-right{transform:translateX(110%);opacity:0;pointer-events:none;z-index:1;transition:none}
+.page.state-wait-left{transform:translateX(-110%);opacity:0;pointer-events:none;z-index:1;transition:none}
+
+#page-flash{position:fixed;inset:0;z-index:9990;background:rgba(255,255,255,0);pointer-events:none;transition:background .12s ease}
+#page-flash.flash{background:rgba(255,255,255,0.55)}
+
+/* ═══ PROGRESS DOTS ═══ */
+#trail{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);display:flex;gap:7px;align-items:center;z-index:9995;background:rgba(255,255,255,0.78);backdrop-filter:blur(14px);border-radius:30px;padding:9px 16px;box-shadow:0 4px 20px rgba(233,30,99,0.15);transition:opacity .4s}
+#trail.hide{opacity:0;pointer-events:none}
+.tdot{width:7px;height:7px;border-radius:50%;background:rgba(233,30,99,0.22);transition:all .4s cubic-bezier(.4,0,.2,1)}
+.tdot.done{background:#e91e63;box-shadow:0 0 6px rgba(233,30,99,0.45)}
+.tdot.now{width:22px;background:linear-gradient(90deg,#e91e63,#9c27b0);border-radius:4px}
+
+/* ═══ ANIMATIONS ═══ */
+@keyframes floatUp{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-14px) rotate(3deg)}}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@keyframes heartbeat{0%,100%{transform:scale(1)}14%{transform:scale(1.3)}28%{transform:scale(1)}42%{transform:scale(1.2)}70%{transform:scale(1)}}
+@keyframes shimmer{0%{background-position:-200% center}100%{background-position:200% center}}
+@keyframes bounceIn{0%{transform:scale(0);opacity:0}60%{transform:scale(1.15)}80%{transform:scale(0.95)}100%{transform:scale(1);opacity:1}}
+@keyframes glow{0%,100%{box-shadow:0 0 20px rgba(233,30,99,.3),0 0 0 8px rgba(255,204,128,.15)}50%{box-shadow:0 0 50px rgba(233,30,99,.65),0 0 0 8px rgba(255,204,128,.25)}}
+@keyframes noteUp{0%{opacity:1;transform:translateY(0) rotate(0)}100%{opacity:0;transform:translateY(-80px) rotate(25deg)}}
+@keyframes revealIn{0%{opacity:0;transform:scale(.8) translateY(20px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+
+/* ═══ COMMON ═══ */
+.badge{background:rgba(255,255,255,.88);border:1px solid rgba(233,30,99,.2);border-radius:50px;padding:8px 22px;font-size:11px;letter-spacing:2px;color:#c2185b;display:inline-flex;align-items:center;gap:6px;text-transform:uppercase}
+.btn{background:linear-gradient(135deg,#e91e63,#c2185b,#9c27b0);color:#fff;border:none;border-radius:50px;padding:17px 42px;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;cursor:pointer;box-shadow:0 8px 28px rgba(233,30,99,.42);transition:transform .2s,box-shadow .2s;font-family:'Lato',sans-serif;background-size:200% auto;animation:shimmer 3s linear infinite}
+.btn:hover{transform:translateY(-3px);box-shadow:0 14px 36px rgba(233,30,99,.55)}
+.btn:active{transform:translateY(1px)}
+.card{background:rgba(255,255,255,.93);border-radius:28px;padding:28px 24px;width:100%;box-shadow:0 10px 50px rgba(233,30,99,.12);backdrop-filter:blur(10px)}
+.avatar-ring{width:82px;height:82px;border-radius:50%;background:linear-gradient(135deg,#f8bbd0,#ce93d8,#9fa8da);display:flex;align-items:center;justify-content:center;font-size:42px;margin:0 auto 16px;box-shadow:0 6px 24px rgba(156,39,176,.3);animation:heartbeat 2.5s infinite}
+.wish-div{display:flex;align-items:center;gap:10px;margin:14px 0;color:#e91e63;font-size:16px;opacity:.7}
+.wish-div::before,.wish-div::after{content:'';flex:1;height:1px;background:linear-gradient(to right,transparent,rgba(233,30,99,.4),transparent)}
+.nav-btn{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.96);border:1.5px solid rgba(233,30,99,.25);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:19px;color:#e91e63;box-shadow:0 3px 14px rgba(233,30,99,.12);transition:transform .2s}
+.nav-btn:active{transform:scale(.9)}
+.dot{width:8px;height:8px;border-radius:50%;background:rgba(233,30,99,.25);transition:all .35s;display:inline-block}
+.dot.active{width:24px;background:#e91e63;border-radius:4px}
+.upload-lbl{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;background:rgba(255,255,255,.8);border:1.5px dashed rgba(233,30,99,.35);border-radius:30px;color:#c2185b;font-size:11px;letter-spacing:1.5px;cursor:pointer;text-transform:uppercase;transition:all .2s;margin-top:10px}
+.upload-lbl:hover{border-color:#e91e63;background:#fff}
+
+/* ═══ PAGE 1 — ENVELOPE ═══ */
+#p1{background:linear-gradient(160deg,#fce4ec,#f8bbd0 40%,#e1bee7);justify-content:center;padding:40px 24px}
+.p1-in{display:flex;flex-direction:column;align-items:center;width:100%;max-width:400px}
+.main-title{font-family:'Playfair Display',serif;font-size:38px;color:#4a148c;text-align:center;line-height:1.25;margin-bottom:8px}
+.sub-title{font-family:'Playfair Display',serif;font-style:italic;font-size:24px;color:#e91e63;margin-bottom:36px}
+.pixel-cat{font-size:64px;animation:floatUp 3s ease-in-out infinite;margin-bottom:44px}
+.env-scene{cursor:pointer;text-align:center;position:relative}
+.env-wrap{animation:pulse 2.5s ease-in-out infinite;display:inline-block}
+.envelope{width:min(280px,78vw);height:176px;background:linear-gradient(160deg,#fff8f0,#fff3e0);border:2px solid #ffcc80;border-radius:14px;position:relative;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 40px rgba(233,30,99,.18);animation:glow 3s ease-in-out infinite;overflow:hidden}
+.env-flap{position:absolute;top:0;left:0;right:0;height:50%;background:linear-gradient(145deg,#ffe0b2,#ffcc80);clip-path:polygon(0 0,50% 75%,100% 0);transform-origin:top center;transition:transform .5s cubic-bezier(.4,0,.2,1)}
+.env-flap.open{transform:rotateX(180deg) scaleY(-1)}
+.wax-seal{width:72px;height:72px;background:radial-gradient(circle at 38% 38%,#f48fb1,#e91e63,#c2185b);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:30px;position:relative;z-index:2;box-shadow:0 6px 20px rgba(194,24,91,.55);transition:transform .3s ease}
+.env-scene:hover .wax-seal{transform:scale(1.1) rotate(5deg)}
+.tap-hint{font-size:11px;letter-spacing:2.5px;color:#c2185b;margin-top:16px;opacity:.85;text-transform:uppercase;animation:pulse 1.8s ease-in-out infinite}
+
+/* ═══ PAGE 2 — SONG ═══ */
+#p2{background:linear-gradient(160deg,#1a0533,#3d0d5e,#1a0a3d);padding:0;justify-content:flex-start}
+.p2-in{display:flex;flex-direction:column;align-items:center;width:100%;max-width:400px;padding:50px 24px 100px;margin:0 auto}
+.song-vinyl{width:180px;height:180px;border-radius:50%;background:conic-gradient(#1a1a2e,#16213e,#0f3460,#533483,#1a1a2e,#16213e,#0f3460);display:flex;align-items:center;justify-content:center;box-shadow:0 0 60px rgba(233,30,99,.6),0 0 120px rgba(156,39,176,.3);margin-bottom:28px;position:relative}
+.song-vinyl.spinning{animation:spin 4s linear infinite}
+.vinyl-center{width:60px;height:60px;border-radius:50%;background:radial-gradient(circle at 40% 40%,#f48fb1,#e91e63,#880e4f);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 4px 16px rgba(0,0,0,.5)}
+.vr{position:absolute;inset:8px;border-radius:50%;border:1px solid rgba(255,255,255,.07)}
+.vr2{position:absolute;inset:20px;border-radius:50%;border:1px solid rgba(255,255,255,.05)}
+.vr3{position:absolute;inset:32px;border-radius:50%;border:1px solid rgba(255,255,255,.05)}
+.song-title-big{font-family:'Playfair Display',serif;font-size:26px;color:#fff;text-align:center;margin-bottom:6px;text-shadow:0 2px 20px rgba(233,30,99,.5)}
+.song-sub-note{font-family:'Playfair Display',serif;font-style:italic;font-size:14px;color:rgba(255,255,255,.6);text-align:center;margin-bottom:28px;line-height:1.7}
+.song-controls{display:flex;align-items:center;gap:18px;margin-bottom:32px}
+.play-big{width:68px;height:68px;border-radius:50%;background:linear-gradient(135deg,#e91e63,#c2185b);border:none;display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;box-shadow:0 8px 28px rgba(233,30,99,.6);transition:transform .2s,box-shadow .2s}
+.play-big:hover{transform:scale(1.1)}
+.ctrl-btn{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.7);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.ctrl-btn:hover{background:rgba(255,255,255,.2);color:#fff}
+.music-upload{background:rgba(255,255,255,.07);border:1.5px dashed rgba(255,255,255,.25);border-radius:16px;padding:18px 24px;width:100%;text-align:center;margin-bottom:24px;cursor:pointer;transition:all .2s}
+.music-upload:hover{background:rgba(255,255,255,.12);border-color:rgba(233,30,99,.6)}
+.music-upload p{font-size:11px;letter-spacing:1.5px;color:rgba(255,255,255,.45);text-transform:uppercase;margin-top:5px}
+.prog-wrap{width:100%;height:4px;background:rgba(255,255,255,.15);border-radius:4px;margin-bottom:8px;cursor:pointer}
+.prog-bar{height:100%;background:linear-gradient(90deg,#e91e63,#9c27b0);border-radius:4px;width:0%;transition:width .5s linear}
+.time-row{display:flex;justify-content:space-between;font-size:11px;color:rgba(255,255,255,.4);letter-spacing:1px;width:100%;margin-bottom:28px}
+.note-float{position:fixed;pointer-events:none;z-index:9996;font-size:18px;animation:noteUp 2s ease-out forwards}
+
+/* ═══ PAGE 3 — WISH ═══ */
+#p3{background:linear-gradient(160deg,#fce4ec,#f3e5f5,#ede7f6);padding:40px 20px 100px}
+.p3-in{display:flex;flex-direction:column;align-items:center;width:100%;max-width:400px;margin:0 auto}
+
+/* ═══ PAGE 4 — ALBUM ═══ */
+#p4{background:linear-gradient(160deg,#fce4ec,#e1bee7,#d1c4e9);padding:32px 20px 100px}
+.p4-in{display:flex;flex-direction:column;align-items:center;width:100%;max-width:400px;margin:0 auto}
+.photo-card{background:rgba(255,255,255,.94);border-radius:24px;padding:16px;box-shadow:0 10px 36px rgba(233,30,99,.14);width:100%;margin-bottom:16px}
+.photo-frame{width:100%;height:240px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#fce4ec,#f3e5f5,#e1bee7);overflow:hidden;position:relative;cursor:pointer}
+.photo-frame img{width:100%;height:100%;object-fit:cover;border-radius:14px}
+.photo-hint{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,.72);opacity:0;transition:opacity .2s;border-radius:14px;gap:6px}
+.photo-frame:hover .photo-hint{opacity:1}
+.photo-nav{display:flex;justify-content:space-between;align-items:center;padding:0 4px;margin-top:14px}
+.photo-dots{display:flex;gap:7px;align-items:center}
+
+/* ═══ PAGE 5 — POLAROIDS ═══ */
+#p5{background:linear-gradient(160deg,#e8eaf6,#f3e5f5,#fce4ec);padding:32px 20px 100px}
+.p5-in{display:flex;flex-direction:column;align-items:center;width:100%;max-width:400px;margin:0 auto}
+.pol-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;margin-bottom:20px}
+.polaroid{background:#fff;border-radius:6px;padding:10px 10px 30px;box-shadow:0 8px 24px rgba(0,0,0,.12);cursor:pointer;transition:transform .35s,box-shadow .35s;position:relative;overflow:hidden}
+.polaroid:nth-child(1){transform:rotate(-2.5deg)}
+.polaroid:nth-child(2){transform:rotate(1.8deg)}
+.polaroid:nth-child(3){transform:rotate(2.2deg)}
+.polaroid:nth-child(4){transform:rotate(-1.8deg)}
+.polaroid:hover,.polaroid.tapped{transform:rotate(0) scale(1.07)!important;box-shadow:0 18px 44px rgba(233,30,99,.22);z-index:10}
+.pol-img{width:100%;aspect-ratio:1;border-radius:3px;background:linear-gradient(135deg,#f8bbd0,#e1bee7);display:flex;align-items:center;justify-content:center;font-size:44px;overflow:hidden;position:relative}
+.pol-img img{width:100%;height:100%;object-fit:cover}
+.pol-hover{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;background:rgba(255,255,255,.82);opacity:0;transition:opacity .2s;font-size:20px;color:#e91e63;cursor:pointer}
+.pol-img:hover .pol-hover{opacity:1}
+.pol-cap{font-family:'Playfair Display',serif;font-style:italic;font-size:11px;color:#9c27b0;text-align:center;margin-top:8px;line-height:1.4}
+.pol-heart{position:absolute;top:-8px;right:-8px;font-size:20px;animation:heartbeat 2s infinite}
+
+/* ═══ PAGE 6 — BOUQUET ═══ */
+#p6{background:linear-gradient(160deg,#f3e5f5,#fce4ec,#fff3e0);padding:32px 20px 100px}
+.p6-in{display:flex;flex-direction:column;align-items:center;width:100%;max-width:400px;margin:0 auto}
+.flower-cards{display:flex;flex-direction:column;gap:14px;width:100%}
+.flower-card{border-radius:22px;padding:22px;text-align:center;cursor:pointer;transition:transform .3s,box-shadow .3s;box-shadow:0 4px 20px rgba(156,39,176,.1);border:1.5px solid rgba(255,255,255,.6)}
+.flower-card:hover{transform:scale(1.02) translateY(-3px);box-shadow:0 12px 32px rgba(156,39,176,.2)}
+.f-emoji{font-size:48px;margin-bottom:10px;display:block;transition:transform .3s}
+.flower-card:hover .f-emoji{transform:scale(1.2) rotate(10deg)}
+.f-title{font-size:11px;letter-spacing:2px;color:#c2185b;text-transform:uppercase;margin-bottom:10px}
+.f-text{font-family:'Playfair Display',serif;font-style:italic;font-size:14px;color:#4a148c;line-height:1.75}
+.pick-me{font-size:11px;letter-spacing:2px;color:#9c27b0;text-transform:uppercase;opacity:.8}
+
+/* ═══ PAGE 7 — LETTER ═══ */
+#p7{background:linear-gradient(160deg,#e8eaf6,#fce4ec,#f3e5f5);padding:32px 20px 100px}
+.p7-in{display:flex;flex-direction:column;align-items:center;width:100%;max-width:400px;margin:0 auto}
+.closing-card{background:rgba(255,255,255,.9);border-radius:28px;padding:28px 24px;width:100%;box-shadow:0 10px 50px rgba(233,30,99,.12);text-align:center;margin-bottom:18px;position:relative;overflow:hidden}
+.closing-card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(252,228,236,.3),rgba(243,229,245,.3));pointer-events:none}
+.letter-card{background:linear-gradient(160deg,#fffdf8,#fff9f0);border-radius:28px;padding:28px 26px;width:100%;box-shadow:0 10px 50px rgba(233,30,99,.1);border:1px solid rgba(233,30,99,.1)}
+.letter-greeting{font-family:'Playfair Display',serif;font-style:italic;font-size:24px;color:#4a148c;margin-bottom:16px}
+.letter-text{font-size:14px;color:#5e35b1;line-height:2;margin-bottom:16px}
+.letter-sign{font-family:'Playfair Display',serif;font-style:italic;font-size:18px;color:#4a148c;margin-top:22px}
+
+/* ═══ PAGE 8 — QUIZ ═══ */
+#p8{background:linear-gradient(160deg,#fff3e0,#fce4ec,#e8f5e9);padding:32px 20px 100px}
+.p8-in{display:flex;flex-direction:column;align-items:center;width:100%;max-width:400px;margin:0 auto}
+.quiz-question{font-family:'Playfair Display',serif;font-size:22px;color:#4a148c;text-align:center;margin-bottom:24px;line-height:1.5}
+.quiz-options{display:flex;flex-direction:column;gap:12px;width:100%}
+.quiz-option{background:rgba(255,255,255,.88);border:1.5px solid rgba(233,30,99,.2);border-radius:16px;padding:16px 20px;cursor:pointer;font-size:14px;color:#4a148c;text-align:left;transition:all .25s;font-family:'Lato',sans-serif}
+.quiz-option:hover{background:rgba(252,228,236,.9);border-color:#e91e63;transform:translateX(6px)}
+.quiz-option.correct{background:linear-gradient(135deg,#e8f5e9,#c8e6c9);border-color:#4caf50;color:#1b5e20}
+.quiz-option.wrong{background:linear-gradient(135deg,#fce4ec,#f8bbd0);border-color:#e91e63;color:#880e4f}
+.quiz-result{font-family:'Playfair Display',serif;font-style:italic;font-size:16px;color:#4a148c;text-align:center;margin-top:16px;min-height:50px;line-height:1.6}
+.quiz-progress{font-size:12px;letter-spacing:1px;color:#c2185b;text-align:center;margin-bottom:8px}
+
+/* ═══ PAGE 9 — FINALE ═══ */
+#p9{background:linear-gradient(160deg,#4a148c,#880e4f,#1a237e);padding:40px 20px;justify-content:center}
+#p9::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,rgba(233,30,99,.3),transparent 60%)}
+.p9-in{display:flex;flex-direction:column;align-items:center;width:100%;max-width:400px;position:relative;z-index:1}
+.final-title{font-family:'Playfair Display',serif;font-size:48px;color:#fff;text-align:center;line-height:1.2;text-shadow:0 4px 20px rgba(233,30,99,.5);margin-bottom:16px;animation:heartbeat 2s infinite}
+.final-sub{font-family:'Playfair Display',serif;font-style:italic;font-size:18px;color:rgba(255,255,255,.85);text-align:center;line-height:1.6;margin-bottom:28px}
+.stars-row{display:flex;justify-content:center;gap:8px;font-size:32px;margin-bottom:24px}
+.final-card{background:rgba(255,255,255,.1);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.2);border-radius:24px;padding:24px;width:100%;text-align:center}
+.final-msg{font-family:'Playfair Display',serif;font-style:italic;font-size:16px;line-height:1.85;color:rgba(255,255,255,.9)}
+
+/* ═══ EDIT PANEL ═══ */
+.edit-fab{position:fixed;bottom:28px;right:18px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#e91e63,#9c27b0);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 6px 24px rgba(233,30,99,.5);z-index:9999;transition:transform .2s}
+.edit-fab:hover{transform:scale(1.12) rotate(15deg)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10000;display:none;backdrop-filter:blur(4px)}
+.overlay.show{display:block}
+.edit-panel{background:#fff;border-radius:28px 28px 0 0;padding:22px;position:fixed;bottom:0;left:0;right:0;z-index:10001;max-height:88vh;overflow-y:auto;transform:translateY(100%);transition:transform .45s cubic-bezier(.4,0,.2,1);max-width:480px;margin:0 auto}
+.edit-panel.open{transform:translateY(0)}
+.edit-handle{width:44px;height:5px;background:#f0e6f0;border-radius:3px;margin:0 auto 20px}
+.el{font-size:11px;letter-spacing:1px;color:#aaa;text-transform:uppercase;margin-bottom:6px;display:block}
+.ei{width:100%;border:1.5px solid #f3e5f5;border-radius:14px;padding:12px 16px;font-size:14px;color:#4a148c;font-family:'Lato',sans-serif;outline:none;transition:border-color .2s;margin-bottom:14px}
+.ei:focus{border-color:#e91e63}
+.eta{width:100%;border:1.5px solid #f3e5f5;border-radius:14px;padding:12px 16px;font-size:13px;color:#4a148c;font-family:'Playfair Display',serif;font-style:italic;outline:none;resize:vertical;min-height:90px;line-height:1.7;margin-bottom:14px}
+.eta:focus{border-color:#e91e63}
+.save-btn{background:linear-gradient(135deg,#e91e63,#9c27b0);color:#fff;border:none;border-radius:14px;padding:15px;font-size:14px;cursor:pointer;width:100%;font-family:'Lato',sans-serif;font-weight:700;letter-spacing:1px}
+.esec{font-size:13px;font-weight:700;color:#4a148c;letter-spacing:1px;text-transform:uppercase;margin:20px 0 12px;padding-top:16px;border-top:1px solid #f3e5f5}
+</style>
+</head>
+<body>
+
+<canvas id="particle-canvas"></canvas>
+<div id="page-flash"></div>
+
+<div id="trail"></div>
+
+<div id="app">
+
+<!-- PAGE 1: ENVELOPE -->
+<div class="page state-current" id="p1">
+  <div style="position:absolute;top:8%;left:4%;font-size:50px;opacity:.08;animation:spin 25s linear infinite">🌸</div>
+  <div style="position:absolute;top:18%;right:4%;font-size:40px;opacity:.07;animation:spin 18s linear infinite reverse">🌺</div>
+  <div style="position:absolute;bottom:22%;left:6%;font-size:44px;opacity:.07;animation:spin 22s linear infinite">✨</div>
+  <div class="p1-in">
+    <div class="badge" style="margin-bottom:26px">🤍 A Birthday Surprise</div>
+    <h1 class="main-title">a little something<br>for you</h1>
+    <p class="sub-title">happy birthday 🤍</p>
+    <div class="pixel-cat">🐱</div>
+    <div class="env-scene" id="env-scene" onclick="openEnvelope()">
+      <div class="env-wrap">
+        <div class="envelope" id="envelope">
+          <div class="env-flap" id="env-flap"></div>
+          <div class="wax-seal" id="wax-seal">🤍</div>
+        </div>
+      </div>
+      <p class="tap-hint">TAP THE SEAL TO OPEN 🌸</p>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: SONG -->
+<div class="page state-wait-right" id="p2">
+  <div class="p2-in">
+    <div class="badge" style="margin-bottom:28px;background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.25);color:rgba(255,255,255,.8)">🎵 A Song For You</div>
+    <div class="song-vinyl" id="song-vinyl">
+      <div class="vr"></div><div class="vr2"></div><div class="vr3"></div>
+      <div class="vinyl-center">🎵</div>
+    </div>
+    <div class="song-title-big" id="song-title">A song for you...</div>
+    <p class="song-sub-note" id="song-note">press play — i picked this one because it always reminds me of you.</p>
+    <label class="music-upload" for="music-input">
+      <div style="font-size:32px;margin-bottom:5px">🎶</div>
+      <p>Upload Your Song</p>
+      <p style="font-size:10px;margin-top:3px;color:rgba(255,255,255,.25)">MP3 · WAV · OGG</p>
+    </label>
+    <input type="file" id="music-input" accept="audio/*" style="display:none" onchange="loadSong(this)">
+    <div class="prog-wrap" id="prog-wrap" onclick="seekSong(event)">
+      <div class="prog-bar" id="prog-bar"></div>
+    </div>
+    <div class="time-row">
+      <span id="song-cur">0:00</span>
+      <span id="song-dur">0:00</span>
+    </div>
+    <div class="song-controls">
+      <button class="ctrl-btn" onclick="restartSong()">⏮</button>
+      <button class="play-big" id="play-btn" onclick="togglePlay()">▶</button>
+      <button class="ctrl-btn" id="repeat-btn" onclick="toggleRepeat()" style="opacity:.4">🔁</button>
+    </div>
+    <button class="btn" onclick="goTo(3)" style="background:linear-gradient(135deg,rgba(255,255,255,.15),rgba(255,255,255,.07));border:1.5px solid rgba(255,255,255,.3);backdrop-filter:blur(10px)">OPEN MY WISH CARD 💌</button>
+  </div>
+</div>
+
+<!-- PAGE 3: WISH -->
+<div class="page state-wait-right" id="p3">
+  <div class="p3-in">
+    <div style="display:flex;justify-content:flex-end;gap:10px;width:100%;margin-bottom:10px">
+      <span style="font-size:28px;opacity:.4;animation:floatUp 3s ease-in-out infinite">🌸</span>
+      <span style="font-size:28px;opacity:.3;animation:floatUp 3.5s ease-in-out infinite .5s">🌺</span>
+    </div>
+    <div class="badge" style="margin-bottom:18px">🤍 A Little Birthday Wish</div>
+    <div class="card">
+      <div class="avatar-ring">🐾</div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:30px;color:#4a148c;text-align:center;margin-bottom:14px" id="wish-name">Happy Birthday</h2>
+      <div class="wish-div">🌸</div>
+      <p style="font-family:'Playfair Display',serif;font-style:italic;font-size:15px;color:#4a148c;line-height:1.9;text-align:center" id="wish-message">Today is yours. A whole little garden of wishes — for every laugh we've shared, every silly moment, and every reason you make the world brighter.</p>
+    </div>
+    <button class="btn" onclick="goTo(4)" style="margin-top:28px">SEE OUR ALBUM 📷</button>
+  </div>
+</div>
+
+<!-- PAGE 4: ALBUM -->
+<div class="page state-wait-right" id="p4">
+  <div class="p4-in">
+    <div class="badge" style="margin-bottom:14px">🤍 OUR ALBUM</div>
+    <h2 style="font-family:'Playfair Display',serif;font-size:28px;color:#4a148c;text-align:center;margin-bottom:4px">our little album</h2>
+    <p style="font-size:13px;color:#c2185b;margin-bottom:22px;text-align:center">a few of my favourite moments 🤍</p>
+    <div class="photo-card">
+      <div class="photo-frame" id="photo-display" onclick="document.getElementById('album-input').click()">
+        <span style="font-size:90px;animation:bounceIn .5s ease" id="photo-emoji">🐹</span>
+        <div class="photo-hint" id="photo-hint">
+          <span style="font-size:30px">📷</span>
+          <span style="font-size:11px;letter-spacing:1.5px;color:#e91e63;text-transform:uppercase">Upload Photo</span>
+        </div>
+      </div>
+      <input type="file" id="album-input" accept="image/*" multiple style="display:none" onchange="loadAlbumPhotos(this)">
+      <div class="photo-nav">
+        <button class="nav-btn" onclick="changePhoto(-1)">←</button>
+        <div class="photo-dots" id="photo-dots"></div>
+        <button class="nav-btn" onclick="changePhoto(1)">→</button>
+      </div>
+      <div style="font-size:10px;letter-spacing:2px;color:#e91e63;text-align:center;margin-top:12px;text-transform:uppercase" id="mem-label">MEMORY 01 / 03</div>
+      <p style="font-family:'Playfair Display',serif;font-style:italic;font-size:14px;color:#4a148c;text-align:center;margin-top:8px;line-height:1.7;padding:0 8px" id="mem-cap">the way you smile in every photo — i hope you know it lights up the room.</p>
+    </div>
+    <label class="upload-lbl" for="album-input">📷 Upload Photos (up to 3)</label>
+    <button class="btn" onclick="goTo(5)" style="margin-top:20px">SEE POLAROIDS 📸</button>
+  </div>
+</div>
+
+<!-- PAGE 5: POLAROIDS -->
+<div class="page state-wait-right" id="p5">
+  <div class="p5-in">
+    <div class="badge" style="margin-bottom:16px">📸 OUR MEMORIES</div>
+    <h2 style="font-family:'Playfair Display',serif;font-size:26px;color:#4a148c;text-align:center;margin-bottom:5px">little polaroids</h2>
+    <p style="font-size:13px;color:#9c27b0;text-align:center;margin-bottom:22px">tap each one • hover to upload 🤍</p>
+    <div class="pol-grid" id="pol-grid"></div>
+    <button class="btn" onclick="goTo(6)">PICK A WISH 🌸</button>
+  </div>
+</div>
+
+<!-- PAGE 6: BOUQUET -->
+<div class="page state-wait-right" id="p6">
+  <div class="p6-in">
+    <div class="badge" style="margin-bottom:18px">🌸 Birthday Bouquet</div>
+    <h2 style="font-family:'Playfair Display',serif;font-size:26px;color:#4a148c;text-align:center;margin-bottom:5px;line-height:1.35">a tiny bouquet of<br>birthday wishes</h2>
+    <p style="font-size:13px;color:#9c27b0;text-align:center;margin-bottom:22px">pick each flower — there's a little wish inside 🤍</p>
+    <div class="flower-cards" id="flower-con"></div>
+    <button class="btn" onclick="goTo(7)" style="margin-top:24px">READ MY LETTER 💌</button>
+  </div>
+</div>
+
+<!-- PAGE 7: LETTER -->
+<div class="page state-wait-right" id="p7">
+  <div class="p7-in">
+    <div class="closing-card" style="margin-bottom:18px">
+      <span style="position:absolute;top:16px;left:16px;font-size:26px;opacity:.35">🌸</span>
+      <span style="position:absolute;top:16px;right:16px;font-size:26px;opacity:.3">🌺</span>
+      <div class="avatar-ring">🐱</div>
+      <h2 style="font-family:'Playfair Display',serif;font-size:26px;color:#4a148c;margin-bottom:12px">happy birthday 🤍</h2>
+      <p style="font-size:14px;color:#5e35b1;line-height:1.85;position:relative;z-index:1" id="card-message">thank you for being you — for the patience, the late-night talks, the silly inside jokes.</p>
+    </div>
+    <div class="badge" style="margin-bottom:14px">🤍 A Birthday Letter</div>
+    <div class="letter-card">
+      <div class="avatar-ring" style="margin:0 auto 16px">🐾</div>
+      <div style="font-size:11px;letter-spacing:2px;color:#c2185b;text-align:center;margin-bottom:14px">🌸 A LETTER, JUST FOR YOU 🌸</div>
+      <div class="letter-greeting" id="letter-greeting">Dearest birthday human,</div>
+      <div style="height:1px;background:linear-gradient(to right,transparent,rgba(233,30,99,.3),transparent);margin:16px 0"></div>
+      <div id="letter-body">
+        <p class="letter-text">there's no card big enough for everything i'd like to say, so i made you a little garden — with a song, our pictures, and a few of my favourite wishes for the year ahead.</p>
+        <p class="letter-text">thank you for the small and unseen things — the way you check in, the jokes only we get, the quiet patience when i'm being too much. i noticed. i still notice.</p>
+        <p class="letter-text">i hope today you feel celebrated. i hope you eat something delicious that you didn't have to make, and someone tells you you're loved (you are). most of all, i hope this year ahead feels — for one whole trip around the sun — exactly the way you've always made me feel: completely, completely loved.</p>
+      </div>
+      <div style="height:1px;background:linear-gradient(to right,transparent,rgba(233,30,99,.3),transparent);margin:22px 0"></div>
+      <div class="letter-sign">with all my love,</div>
+      <div style="font-size:11px;letter-spacing:2px;color:#e91e63;text-transform:uppercase;margin-top:5px" id="letter-from">— YOUR NAME</div>
+    </div>
+    <button class="btn" onclick="goTo(8)" style="margin-top:28px">PLAY A QUIZ 💝</button>
+  </div>
+</div>
+
+<!-- PAGE 8: QUIZ -->
+<div class="page state-wait-right" id="p8">
+  <div class="p8-in">
+    <div class="badge" style="margin-bottom:18px">💝 LOVE QUIZ</div>
+    <h2 style="font-family:'Playfair Display',serif;font-size:26px;color:#4a148c;text-align:center;margin-bottom:5px">how well do you know us?</h2>
+    <p style="font-size:13px;color:#9c27b0;text-align:center;margin-bottom:22px">a fun little quiz just for you 🌸</p>
+    <div class="card" style="width:100%">
+      <div class="quiz-progress" id="quiz-progress">Question 1 / 3</div>
+      <p class="quiz-question" id="quiz-q"></p>
+      <div class="quiz-options" id="quiz-opts"></div>
+      <p class="quiz-result" id="quiz-result"></p>
+      <button class="btn" id="quiz-next-btn" style="display:none;width:100%;margin-top:12px" onclick="nextQuestion()">NEXT →</button>
+      <button class="btn" id="quiz-finish-btn" style="display:none;width:100%;margin-top:12px" onclick="goTo(9)">SEE GRAND FINALE 🎉</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 9: FINALE -->
+<div class="page state-wait-right" id="p9">
+  <div class="p9-in">
+    <div style="font-size:80px;margin-bottom:16px;animation:heartbeat 1.5s infinite">❤️</div>
+    <div class="stars-row">⭐⭐⭐⭐⭐</div>
+    <h1 class="final-title" id="final-title">Happy Birthday!</h1>
+    <p class="final-sub" id="final-sub">Today and every day, you deserve all the love in the world. Thank you for being you.</p>
+    <div class="final-card">
+      <p class="final-msg" id="final-msg">"here's to you — to another year of laughter, softness, and being completely, utterly loved."</p>
+      <div style="margin-top:20px;font-size:12px;letter-spacing:2px;color:rgba(255,255,255,.5);text-transform:uppercase">— WITH ALL MY LOVE</div>
+    </div>
+    <button class="btn" onclick="goTo(1)" style="margin-top:28px;background:rgba(255,255,255,.15);backdrop-filter:blur(10px);border:1.5px solid rgba(255,255,255,.3)">🌸 EXPERIENCE AGAIN</button>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<!-- EDIT -->
+<button class="edit-fab" onclick="openEdit()">✏️</button>
+<div class="overlay" id="overlay" onclick="closeEdit()"></div>
+<div class="edit-panel" id="edit-panel">
+  <div class="edit-handle"></div>
+  <div style="font-size:18px;font-weight:700;color:#4a148c;margin-bottom:20px">✏️ Personalise Everything</div>
+
+  <div class="esec" style="border-top:none;margin-top:0;padding-top:0">💌 Wish Card</div>
+  <label class="el">Birthday Heading</label>
+  <input class="ei" id="e-name" value="Happy Birthday">
+  <label class="el">Wish Message</label>
+  <textarea class="eta" id="e-wish">Today is yours. A whole little garden of wishes — for every laugh we've shared, every silly moment, and every reason you make the world brighter.</textarea>
+
+  <div class="esec">🎵 Song Page</div>
+  <label class="el">Song Title</label>
+  <input class="ei" id="e-song" value="A song for you...">
+  <label class="el">Song Note</label>
+  <input class="ei" id="e-snote" value="press play — i picked this one because it always reminds me of you.">
+
+  <div class="esec">📷 Album Captions</div>
+  <label class="el">Memory 1</label><input class="ei" id="e-c1" value="the way you smile in every photo — i hope you know it lights up the room.">
+  <label class="el">Memory 2</label><input class="ei" id="e-c2" value="every moment with you feels like a favourite memory.">
+  <label class="el">Memory 3</label><input class="ei" id="e-c3" value="grateful for every adventure, big and small.">
+
+  <div class="esec">📸 Polaroid Captions</div>
+  <label class="el">Polaroid 1</label><input class="ei" id="e-p1" value="the best days are the ones spent with you 🌸">
+  <label class="el">Polaroid 2</label><input class="ei" id="e-p2" value="laughing until it hurt 🤍">
+  <label class="el">Polaroid 3</label><input class="ei" id="e-p3" value="our little adventure ✨">
+  <label class="el">Polaroid 4</label><input class="ei" id="e-p4" value="always my favourite photo 🌺">
+
+  <div class="esec">💌 Letter</div>
+  <label class="el">Card Message</label>
+  <textarea class="eta" id="e-card">thank you for being you — for the patience, the late-night talks, the silly inside jokes. i hope today feels as gentle and special as you've always made my days feel.</textarea>
+  <label class="el">Letter Greeting</label>
+  <input class="ei" id="e-greet" value="Dearest birthday human,">
+  <label class="el">Letter Body (blank line = new paragraph)</label>
+  <textarea class="eta" id="e-letter" style="min-height:130px">there's no card big enough for everything i'd like to say, so i made you a little garden — with a song, our pictures, and a few of my favourite wishes for the year ahead.
+
+thank you for the small and unseen things — the way you check in, the jokes only we get, the quiet patience when i'm being too much. i noticed. i still notice.
+
+i hope today you feel celebrated. i hope you eat something delicious that you didn't have to make, and someone tells you you're loved (you are). most of all, i hope this year ahead feels — for one whole trip around the sun — exactly the way you've always made me feel: completely, completely loved.</textarea>
+  <label class="el">Sign-off Name</label>
+  <input class="ei" id="e-from" value="— YOUR NAME">
+
+  <div class="esec">💝 Quiz</div>
+  <label class="el">Question 1</label><input class="ei" id="e-q1" value="What is my favourite thing about you?">
+  <label class="el">Correct Answer (Q1)</label><input class="ei" id="e-a1" value="Everything about you 🌸">
+  <label class="el">Question 2</label><input class="ei" id="e-q2" value="How many times have I thought of you today?">
+  <label class="el">Correct Answer (Q2)</label><input class="ei" id="e-a2" value="More than the stars 💫">
+  <label class="el">Question 3</label><input class="ei" id="e-q3" value="What is the greatest gift you've given me?">
+  <label class="el">Correct Answer (Q3)</label><input class="ei" id="e-a3" value="Your love and presence ❤️">
+
+  <div class="esec">🎉 Grand Finale</div>
+  <label class="el">Finale Title</label><input class="ei" id="e-ftitle" value="Happy Birthday!">
+  <label class="el">Finale Message</label>
+  <textarea class="eta" id="e-fmsg">"here's to you — to another year of laughter, softness, and being completely, utterly loved."</textarea>
+
+  <button class="save-btn" onclick="applyEdits()">💾 Save All Changes</button>
+  <div style="height:24px"></div>
+</div>
+
+<script>
+/* ═══ STATE ═══ */
+const PAGES = 9;
+let cur = 1;
+let photoIdx = 0;
+let quizIdx = 0, quizScore = 0, quizDone = false;
+let playing = false, repeat = false;
+let audio = null, noteTimer = null;
+
+const photos = [
+  {src:null,emoji:'🐹',label:'MEMORY 01 / 03',cap:'the way you smile in every photo — i hope you know it lights up the room.'},
+  {src:null,emoji:'🌸',label:'MEMORY 02 / 03',cap:'every moment with you feels like a favourite memory.'},
+  {src:null,emoji:'✨',label:'MEMORY 03 / 03',cap:'grateful for every adventure, big and small.'}
+];
+const pols = [
+  {src:null,emoji:'🌷',cap:'the best days are the ones spent with you 🌸'},
+  {src:null,emoji:'🌟',cap:'laughing until it hurt 🤍'},
+  {src:null,emoji:'🎀',cap:'our little adventure ✨'},
+  {src:null,emoji:'🌈',cap:'always my favourite photo 🌺'}
+];
+const flowers = [
+  {emoji:'🌸',color:'linear-gradient(135deg,#fce4ec,#f8bbd0)',title:'THE WAY YOU LAUGH',text:'your laugh is one of those sounds that just makes a room feel warmer. wishing you a year full of the kind of moments that bring it out again and again.'},
+  {emoji:'🌹',color:'linear-gradient(135deg,#fff3e0,#ffe0b2)',title:'THE WAY YOU SHOW UP',text:'you remember the small things — the worry from a Tuesday, the random text on a hard day. it always feels like being seen, not just heard.'},
+  {emoji:'🌼',color:'linear-gradient(135deg,#f3e5f5,#e1bee7)',title:'THE YEAR AHEAD',text:'may this year be kinder than the last. may every new chapter bring you good food, better naps, and people who love you the way you deserve.'}
+];
+let quizData = [
+  {q:'What is my favourite thing about you?',correct:'Everything about you 🌸',wrong:['Your smile alone','Your kindness only','Your laugh']},
+  {q:'How many times have I thought of you today?',correct:'More than the stars 💫',wrong:['Just once','A few times','Counting is impossible']},
+  {q:'What is the greatest gift you\'ve given me?',correct:'Your love and presence ❤️',wrong:['A birthday cake','A warm hug','Sweet texts']}
+];
+
+/* ═══ NAVIGATION ═══ */
+function goTo(n) {
+  if (n === cur) return;
+  const dir = n > cur ? 1 : -1;
+  const fromEl = document.getElementById('p' + cur);
+  const toEl   = document.getElementById('p' + n);
+
+  // Flash
+  const fl = document.getElementById('page-flash');
+  fl.classList.add('flash');
+  setTimeout(() => fl.classList.remove('flash'), 140);
+
+  // Position incoming off-screen instantly (no transition)
+  toEl.className = 'page ' + (dir > 0 ? 'state-wait-right' : 'state-wait-left');
+  void toEl.offsetWidth; // reflow
+
+  // Slide both
+  fromEl.className = 'page ' + (dir > 0 ? 'state-gone-left' : 'state-gone-right');
+  toEl.className   = 'page state-current';
+  cur = n;
+
+  // After transition, park outgoing off the other side
+  setTimeout(() => {
+    fromEl.className = 'page ' + (dir > 0 ? 'state-wait-left' : 'state-wait-right');
+    toEl.scrollTop = 0;
+  }, 680);
+
+  updateTrail();
+  fireParticles(n);
+  if (n === 8) initQuiz();
+}
+
+/* ═══ TRAIL ═══ */
+function buildTrail() {
+  const t = document.getElementById('trail');
+  t.innerHTML = Array.from({length:PAGES},(_,i)=>`<div class="tdot" id="td${i+1}"></div>`).join('');
+}
+function updateTrail() {
+  const t = document.getElementById('trail');
+  t.className = (cur === 1 || cur === PAGES) ? 'hide' : '';
+  for (let i = 1; i <= PAGES; i++) {
+    const d = document.getElementById('td'+i);
+    if (!d) continue;
+    d.className = 'tdot' + (i < cur ? ' done' : i === cur ? ' now' : '');
+  }
+}
+
+/* ═══ ENVELOPE ═══ */
+function openEnvelope() {
+  const scene = document.getElementById('env-scene');
+  if (scene.dataset.busy) return;
+  scene.dataset.busy = 1;
+  document.getElementById('env-flap').classList.add('open');
+  if (navigator.vibrate) navigator.vibrate([40,30,40]);
+  setTimeout(() => {
+    goTo(2);
+    setTimeout(() => {
+      document.getElementById('env-flap').classList.remove('open');
+      delete scene.dataset.busy;
+    }, 300);
+  }, 650);
+}
+
+/* ═══ ALBUM ═══ */
+function buildPhotoDots() {
+  document.getElementById('photo-dots').innerHTML =
+    photos.map((_,i)=>`<span class="dot ${i===0?'active':''}" id="pd${i}"></span>`).join('');
+}
+
+function renderPhoto() {
+  const ph = photos[photoIdx];
+  const frame = document.getElementById('photo-display');
+  const hint  = document.getElementById('photo-hint');
+  // Clear old img
+  frame.querySelectorAll('img.alb').forEach(e=>e.remove());
+  const emo = document.getElementById('photo-emoji');
+
+  if (ph.src) {
+    emo.style.display = 'none';
+    let img = document.createElement('img');
+    img.className = 'alb';
+    img.src = ph.src;
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:14px;animation:bounceIn .4s ease';
+    frame.insertBefore(img, hint);
+    if(hint) hint.querySelector('span:last-child').textContent = 'Change Photo';
+  } else {
+    emo.style.display = '';
+    emo.textContent = ph.emoji;
+    emo.style.animation = 'none';
+    void emo.offsetWidth;
+    emo.style.animation = 'bounceIn .5s ease';
+    if(hint) hint.querySelector('span:last-child').textContent = 'Upload Photo';
+  }
+  document.getElementById('mem-label').textContent = ph.label;
+  document.getElementById('mem-cap').textContent   = ph.cap;
+  photos.forEach((_,i) => {
+    const d = document.getElementById('pd'+i);
+    if(d) d.className = 'dot' + (i===photoIdx?' active':'');
+  });
+}
+
+function changePhoto(dir) {
+  photoIdx = (photoIdx + dir + photos.length) % photos.length;
+  renderPhoto();
+}
+
+function loadAlbumPhotos(inp) {
+  Array.from(inp.files).slice(0,3).forEach((f,i) => {
+    const r = new FileReader();
+    r.onload = e => {
+      photos[i].src = e.target.result;
+      if (i === photoIdx) renderPhoto();
+    };
+    r.readAsDataURL(f);
+  });
+}
+
+/* ═══ POLAROIDS ═══ */
+function buildPols() {
+  document.getElementById('pol-grid').innerHTML = pols.map((p,i) => `
+    <div class="polaroid" id="pol${i}" onclick="tapPol(${i})">
+      <div class="pol-img" id="pimg${i}">
+        ${p.src?`<img src="${p.src}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:44px">${p.emoji}</span>`}
+        <div class="pol-hover" onclick="event.stopPropagation();polUpload(${i})">
+          <span>📷</span>
+          <span style="font-size:9px;letter-spacing:1px;color:#e91e63;text-transform:uppercase">${p.src?'Change':'Upload'}</span>
+        </div>
+      </div>
+      <div class="pol-cap" id="pcap${i}">${p.cap}</div>
+      <span class="pol-heart">💖</span>
+    </div>
+  `).join('');
+  // hidden inputs
+  pols.forEach((_,i) => {
+    if (document.getElementById('pf'+i)) return;
+    const inp = document.createElement('input');
+    inp.type='file'; inp.accept='image/*'; inp.id='pf'+i; inp.style.display='none';
+    inp.onchange = function(){ loadPolPhoto(this,i); };
+    document.body.appendChild(inp);
+  });
+}
+function polUpload(i){ document.getElementById('pf'+i).click(); }
+function loadPolPhoto(inp,i){
+  if(!inp.files[0]) return;
+  const r = new FileReader();
+  r.onload = e => {
+    pols[i].src = e.target.result;
+    const d = document.getElementById('pimg'+i);
+    d.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover">
+      <div class="pol-hover" onclick="event.stopPropagation();polUpload(${i})">
+        <span>📷</span><span style="font-size:9px;letter-spacing:1px;color:#e91e63;text-transform:uppercase">Change</span>
+      </div>`;
+  };
+  r.readAsDataURL(inp.files[0]);
+}
+function tapPol(i){
+  const el = document.getElementById('pol'+i);
+  el.classList.toggle('tapped');
+  if(navigator.vibrate) navigator.vibrate(25);
+}
+
+/* ═══ FLOWERS ═══ */
+function buildFlowers(){
+  document.getElementById('flower-con').innerHTML = flowers.map((f,i)=>`
+    <div class="flower-card" id="fc${i}" style="background:${f.color}" onclick="pickFlower(${i})">
+      <span class="f-emoji">${f.emoji}</span>
+      <div class="f-title">${f.title}</div>
+      <div id="fd${i}" style="display:none;margin-top:8px"><p class="f-text">${f.text}</p></div>
+      <div class="pick-me" id="fm${i}">PICK ME ✦</div>
+    </div>
+  `).join('');
+}
+function pickFlower(i){
+  const fd=document.getElementById('fd'+i),fm=document.getElementById('fm'+i);
+  if(fd.style.display==='none'){fd.style.display='block';fm.style.display='none';}
+  else{fd.style.display='none';fm.style.display='block';}
+  if(navigator.vibrate) navigator.vibrate(20);
+}
+
+/* ═══ SONG PLAYER ═══ */
+function loadSong(inp){
+  if(!inp.files[0]) return;
+  if(audio){audio.pause();audio.src='';}
+  const url = URL.createObjectURL(inp.files[0]);
+  const name = inp.files[0].name.replace(/\.[^.]+$/,'');
+  audio = new Audio(url);
+  audio.addEventListener('timeupdate', updateProg);
+  audio.addEventListener('ended', onEnd);
+  audio.addEventListener('loadedmetadata',()=>{ document.getElementById('song-dur').textContent=fmtT(audio.duration); });
+  document.getElementById('song-title').textContent = name;
+  if(playing){ audio.play().catch(()=>{}); }
+}
+function togglePlay(){
+  if(!audio){ showToast('Upload a song first 🎵'); return; }
+  if(playing){
+    audio.pause(); playing=false;
+    document.getElementById('play-btn').textContent='▶';
+    document.getElementById('song-vinyl').classList.remove('spinning');
+    clearTimeout(noteTimer);
+  } else {
+    audio.play().catch(()=>{});
+    playing=true;
+    document.getElementById('play-btn').textContent='⏸';
+    document.getElementById('song-vinyl').classList.add('spinning');
+    schedNote();
+  }
+}
+function restartSong(){ if(!audio)return; audio.currentTime=0; if(!playing)togglePlay(); }
+function toggleRepeat(){
+  repeat=!repeat;
+  document.getElementById('repeat-btn').style.opacity=repeat?'1':'.4';
+  if(audio) audio.loop=repeat;
+}
+function onEnd(){
+  if(repeat)return;
+  playing=false;
+  document.getElementById('play-btn').textContent='▶';
+  document.getElementById('song-vinyl').classList.remove('spinning');
+  clearTimeout(noteTimer);
+}
+function updateProg(){
+  if(!audio||!audio.duration)return;
+  const pct=(audio.currentTime/audio.duration)*100;
+  document.getElementById('prog-bar').style.width=pct+'%';
+  document.getElementById('song-cur').textContent=fmtT(audio.currentTime);
+}
+function seekSong(e){
+  if(!audio||!audio.duration)return;
+  const w=document.getElementById('prog-wrap');
+  audio.currentTime=(e.offsetX/w.offsetWidth)*audio.duration;
+}
+function fmtT(s){ const m=Math.floor(s/60),sec=Math.floor(s%60); return m+':'+(sec<10?'0':'')+sec; }
+function schedNote(){ if(!playing)return; spawnNote(); noteTimer=setTimeout(schedNote,1800+Math.random()*700); }
+function spawnNote(){
+  const btn=document.getElementById('play-btn');
+  if(!btn)return;
+  const r=btn.getBoundingClientRect();
+  const n=document.createElement('div');
+  n.className='note-float';
+  n.textContent=['🎵','🎶','♪','♫'][Math.floor(Math.random()*4)];
+  n.style.left=(r.left+Math.random()*30)+'px';
+  n.style.top=(r.top-5)+'px';
+  document.body.appendChild(n);
+  setTimeout(()=>n.remove(),2000);
+}
+
+/* ═══ QUIZ ═══ */
+function initQuiz(){ quizIdx=0; quizScore=0; quizDone=false; renderQuiz(); }
+function renderQuiz(){
+  if(quizIdx>=quizData.length){ endQuiz(); return; }
+  const qd=quizData[quizIdx];
+  document.getElementById('quiz-progress').textContent=`Question ${quizIdx+1} / ${quizData.length}`;
+  document.getElementById('quiz-q').textContent=qd.q;
+  document.getElementById('quiz-result').textContent='';
+  document.getElementById('quiz-next-btn').style.display='none';
+  document.getElementById('quiz-finish-btn').style.display='none';
+  quizDone=false;
+  const opts=[qd.correct,...qd.wrong].sort(()=>Math.random()-.5);
+  document.getElementById('quiz-opts').innerHTML=opts.map(o=>`
+    <button class="quiz-option" onclick="answerQuiz('${encodeURIComponent(o)}','${encodeURIComponent(qd.correct)}')">${o}</button>
+  `).join('');
+}
+function answerQuiz(chosen,correct){
+  if(quizDone)return; quizDone=true;
+  const c=decodeURIComponent(correct),ch=decodeURIComponent(chosen);
+  document.querySelectorAll('.quiz-option').forEach(b=>{
+    if(b.textContent===c) b.classList.add('correct');
+    else if(b.textContent===ch) b.classList.add('wrong');
+    b.onclick=null;
+  });
+  if(ch===c){quizScore++;document.getElementById('quiz-result').textContent='✨ Yes! That\'s the one! 🌸';}
+  else{document.getElementById('quiz-result').textContent='💕 The answer was: '+c;}
+  if(quizIdx<quizData.length-1) document.getElementById('quiz-next-btn').style.display='block';
+  else document.getElementById('quiz-finish-btn').style.display='block';
+}
+function nextQuestion(){ quizIdx++; renderQuiz(); }
+function endQuiz(){
+  const msgs=['Every answer is love.','You know my heart so well.','Perfectly you, perfectly wonderful.'];
+  document.getElementById('quiz-result').textContent=`You scored ${quizScore}/${quizData.length} 💖 — `+(msgs[quizScore]||msgs[0]);
+}
+
+/* ═══ PARTICLES ═══ */
+const pcanvas=document.getElementById('particle-canvas');
+const pctx=pcanvas.getContext('2d');
+let ptcls=[], pmode='idle';
+function resizePCanvas(){ pcanvas.width=window.innerWidth; pcanvas.height=window.innerHeight; }
+resizePCanvas();
+window.addEventListener('resize',resizePCanvas);
+
+class Pt {
+  constructor(type){ this.type=type; this.reset(); this.y=Math.random()*-200; }
+  reset(){
+    this.x=Math.random()*pcanvas.width;
+    this.y=this.type==='balloon'?pcanvas.height+30:-30;
+    this.sz=14+Math.random()*18;
+    this.vy=this.type==='balloon'?-(1.5+Math.random()*2):(1.2+Math.random()*2);
+    this.vx=(Math.random()-.5)*1.5;
+    this.rot=Math.random()*360; this.rsp=(Math.random()-.5)*3;
+    this.op=.7+Math.random()*.3;
+    this.sw=Math.random()*2; this.ss=.02+Math.random()*.03; this.so=Math.random()*Math.PI*2;
+    this.life=0;
+    const f=['🌸','🌺','🌼','🌷','✿'],b=['🎈','🎀','🎊','🎉','💝','💖'],h=['❤️','🩷','💕','💗','💓'];
+    this.ch = this.type==='flower'?f[Math.floor(Math.random()*f.length)]:this.type==='balloon'?b[Math.floor(Math.random()*b.length)]:h[Math.floor(Math.random()*h.length)];
+  }
+  update(){
+    this.life++; this.y+=this.vy; this.x+=this.vx+Math.sin(this.life*this.ss+this.so)*this.sw;
+    this.rot+=this.rsp;
+    if(this.type==='balloon'&&this.y<-60) this.reset();
+    else if(this.type!=='balloon'&&this.y>pcanvas.height+60) this.reset();
+  }
+  draw(){
+    pctx.save(); pctx.globalAlpha=this.op;
+    pctx.translate(this.x,this.y); pctx.rotate(this.rot*Math.PI/180);
+    pctx.font=this.sz+'px serif'; pctx.textAlign='center'; pctx.textBaseline='middle';
+    pctx.fillText(this.ch,0,0); pctx.restore();
+  }
+}
+
+function fireParticles(scr){
+  ptcls=[];
+  if(scr===1){pmode='idle';return;}
+  if(scr===9){
+    pmode='celebrate';
+    for(let i=0;i<35;i++){const p=new Pt('balloon');p.x=Math.random()*pcanvas.width;ptcls.push(p);}
+    for(let i=0;i<25;i++){const p=new Pt('heart');p.y=Math.random()*-300;ptcls.push(p);}
+    return;
+  }
+  pmode='normal';
+  for(let i=0;i<22;i++){const p=new Pt(Math.random()<.6?'flower':'heart');p.y=Math.random()*-300;ptcls.push(p);}
+}
+
+function trickle(){
+  if(pmode==='idle')return;
+  if(pmode==='normal'&&ptcls.length<30) ptcls.push(new Pt(Math.random()<.6?'flower':'heart'));
+  if(pmode==='celebrate'&&ptcls.length<65){
+    ptcls.push(new Pt(Math.random()<.5?'balloon':'heart'));
+    if(Math.random()<.4) ptcls.push(new Pt('flower'));
+  }
+}
+
+(function loop(){
+  pctx.clearRect(0,0,pcanvas.width,pcanvas.height);
+  trickle();
+  ptcls.forEach(p=>{p.update();p.draw();});
+  requestAnimationFrame(loop);
+})();
+
+/* ═══ TOAST ═══ */
+function showToast(msg){
+  let t=document.getElementById('toast-el');
+  if(!t){t=document.createElement('div');t.id='toast-el';t.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#4a148c;color:#fff;padding:10px 22px;border-radius:30px;font-size:12px;letter-spacing:1px;z-index:99999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap';document.body.appendChild(t);}
+  t.textContent=msg; t.style.opacity='1';
+  setTimeout(()=>t.style.opacity='0',2500);
+}
+
+/* ═══ EDIT ═══ */
+function openEdit(){ document.getElementById('edit-panel').classList.add('open'); document.getElementById('overlay').classList.add('show'); }
+function closeEdit(){ document.getElementById('edit-panel').classList.remove('open'); document.getElementById('overlay').classList.remove('show'); }
+
+function applyEdits(){
+  document.getElementById('wish-name').textContent     = document.getElementById('e-name').value;
+  document.getElementById('wish-message').textContent  = document.getElementById('e-wish').value;
+  document.getElementById('song-title').textContent    = document.getElementById('e-song').value;
+  document.getElementById('song-note').textContent     = document.getElementById('e-snote').value;
+  photos[0].cap=document.getElementById('e-c1').value;
+  photos[1].cap=document.getElementById('e-c2').value;
+  photos[2].cap=document.getElementById('e-c3').value;
+  renderPhoto();
+  pols[0].cap=document.getElementById('e-p1').value;
+  pols[1].cap=document.getElementById('e-p2').value;
+  pols[2].cap=document.getElementById('e-p3').value;
+  pols[3].cap=document.getElementById('e-p4').value;
+  buildPols();
+  document.getElementById('card-message').textContent  = document.getElementById('e-card').value;
+  document.getElementById('letter-greeting').textContent=document.getElementById('e-greet').value;
+  document.getElementById('letter-from').textContent   = document.getElementById('e-from').value;
+  const paras=document.getElementById('e-letter').value.split('\n\n');
+  document.getElementById('letter-body').innerHTML=paras.map(p=>`<p class="letter-text">${p.replace(/\n/g,'<br>')}</p>`).join('');
+  quizData[0].q=document.getElementById('e-q1').value; quizData[0].correct=document.getElementById('e-a1').value;
+  quizData[1].q=document.getElementById('e-q2').value; quizData[1].correct=document.getElementById('e-a2').value;
+  quizData[2].q=document.getElementById('e-q3').value; quizData[2].correct=document.getElementById('e-a3').value;
+  document.getElementById('final-title').textContent   = document.getElementById('e-ftitle').value;
+  document.getElementById('final-msg').textContent     = document.getElementById('e-fmsg').value;
+  closeEdit(); showToast('✨ All changes saved!');
+}
+
+/* ═══ SWIPE BACK ═══ */
+let txStart=0;
+document.addEventListener('touchstart',e=>{txStart=e.touches[0].clientX;},{passive:true});
+document.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-txStart;
+  if(dx>75&&cur>1) goTo(cur-1);
+},{passive:true});
+
+/* ═══ INIT ═══ */
+buildTrail(); updateTrail();
+buildPhotoDots(); renderPhoto();
+buildPols(); buildFlowers();
+fireParticles(1);
+</script>
+</body>
+</html>

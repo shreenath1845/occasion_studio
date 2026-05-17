@@ -177,14 +177,16 @@ body{background:#fce4ec;position:relative}
 .final-card{background:rgba(255,255,255,.1);backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,.2);border-radius:24px;padding:24px;width:100%;text-align:center}
 .final-msg{font-family:'Playfair Display',serif;font-style:italic;font-size:16px;line-height:1.85;color:rgba(255,255,255,.9)}
 
-/* ═══ EDIT PANEL ═══ */
+/* ═══ EDIT PANEL — SIDE SLIDE ═══ */
 .edit-fab{position:fixed;bottom:28px;right:18px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#e91e63,#9c27b0);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 6px 24px rgba(233,30,99,.5);z-index:9999;transition:transform .2s}
 .edit-fab:hover{transform:scale(1.12) rotate(15deg)}
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:10000;display:none;backdrop-filter:blur(4px)}
 .overlay.show{display:block}
-.edit-panel{background:#fff;border-radius:28px 28px 0 0;padding:22px;position:fixed;bottom:0;left:0;right:0;z-index:10001;max-height:88vh;overflow-y:auto;transform:translateY(100%);transition:transform .45s cubic-bezier(.4,0,.2,1);max-width:480px;margin:0 auto}
-.edit-panel.open{transform:translateY(0)}
-.edit-handle{width:44px;height:5px;background:#f0e6f0;border-radius:3px;margin:0 auto 20px}
+.edit-panel{background:#fff;border-radius:0;padding:0;position:fixed;top:0;right:0;bottom:0;width:min(400px,100vw);z-index:10001;overflow-y:auto;transform:translateX(100%);transition:transform .45s cubic-bezier(.4,0,.2,1);box-shadow:-8px 0 40px rgba(0,0,0,.2)}
+.edit-panel.open{transform:translateX(0)}
+.edit-panel-header{position:sticky;top:0;background:#fff;padding:20px 22px 14px;border-bottom:1px solid #f3e5f5;z-index:2;display:flex;align-items:center;justify-content:space-between}
+.edit-panel-body{padding:20px 22px 80px}
+.ep-close{width:36px;height:36px;border-radius:50%;background:#fce4ec;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;color:#e91e63}
 .el{font-size:11px;letter-spacing:1px;color:#aaa;text-transform:uppercase;margin-bottom:6px;display:block}
 .ei{width:100%;border:1.5px solid #f3e5f5;border-radius:14px;padding:12px 16px;font-size:14px;color:#4a148c;font-family:'Lato',sans-serif;outline:none;transition:border-color .2s;margin-bottom:14px}
 .ei:focus{border-color:#e91e63}
@@ -192,6 +194,18 @@ body{background:#fce4ec;position:relative}
 .eta:focus{border-color:#e91e63}
 .save-btn{background:linear-gradient(135deg,#e91e63,#9c27b0);color:#fff;border:none;border-radius:14px;padding:15px;font-size:14px;cursor:pointer;width:100%;font-family:'Lato',sans-serif;font-weight:700;letter-spacing:1px}
 .esec{font-size:13px;font-weight:700;color:#4a148c;letter-spacing:1px;text-transform:uppercase;margin:20px 0 12px;padding-top:16px;border-top:1px solid #f3e5f5}
+
+/* ═══ ACTION BUTTONS (Download / Share / Cloud) ═══ */
+#action-bar{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;gap:10px;z-index:9998;background:rgba(255,255,255,.92);backdrop-filter:blur(16px);border-radius:60px;padding:10px 16px;box-shadow:0 8px 32px rgba(233,30,99,.18);border:1px solid rgba(233,30,99,.12)}
+.act-btn{border:none;border-radius:50px;padding:10px 16px;font-size:11px;font-family:'Lato',sans-serif;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;display:flex;align-items:center;gap:6px;transition:transform .2s,box-shadow .2s;white-space:nowrap}
+.act-btn:hover{transform:translateY(-2px)}
+.act-dl{background:linear-gradient(135deg,#e91e63,#9c27b0);color:#fff;box-shadow:0 4px 16px rgba(233,30,99,.35)}
+.act-wa{background:#25D366;color:#fff;box-shadow:0 4px 16px rgba(37,211,102,.35)}
+.act-cloud{background:linear-gradient(135deg,#4285f4,#1a73e8);color:#fff;box-shadow:0 4px 16px rgba(66,133,244,.35)}
+#cloud-link-box{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#fff;border-radius:20px;padding:16px 20px;box-shadow:0 12px 40px rgba(0,0,0,.15);z-index:9999;display:none;min-width:min(320px,90vw);border:1px solid rgba(233,30,99,.15)}
+#cloud-link-box input{width:100%;border:1.5px solid #f3e5f5;border-radius:10px;padding:10px 14px;font-size:12px;color:#4a148c;font-family:'Lato',sans-serif;outline:none;margin-bottom:10px}
+#cloud-link-box button{background:linear-gradient(135deg,#e91e63,#9c27b0);color:#fff;border:none;border-radius:10px;padding:10px;font-size:12px;cursor:pointer;width:100%;font-family:'Lato',sans-serif;font-weight:700}
+.cl-close{position:absolute;top:10px;right:12px;background:none;border:none;font-size:18px;cursor:pointer;color:#aaa}
 </style>
 </head>
 <body>
@@ -388,12 +402,30 @@ body{background:#fce4ec;position:relative}
 
 </div><!-- /app -->
 
-<!-- EDIT -->
+<!-- ACTION BAR -->
+<div id="action-bar">
+  <button class="act-btn act-dl" onclick="downloadBirthday()">⬇ Download</button>
+  <button class="act-btn act-wa" onclick="shareWhatsApp()">💬 WhatsApp</button>
+  <button class="act-btn act-cloud" onclick="saveToCloud()">☁ Save Link</button>
+</div>
+
+<!-- CLOUD LINK BOX -->
+<div id="cloud-link-box">
+  <button class="cl-close" onclick="document.getElementById('cloud-link-box').style.display='none'">✕</button>
+  <div style="font-size:13px;font-weight:700;color:#4a148c;margin-bottom:10px">☁️ Your shareable link</div>
+  <input id="cloud-url" readonly placeholder="Generating link…">
+  <button onclick="copyCloudLink()">📋 Copy Link</button>
+</div>
+
+<!-- EDIT FAB -->
 <button class="edit-fab" onclick="openEdit()">✏️</button>
 <div class="overlay" id="overlay" onclick="closeEdit()"></div>
 <div class="edit-panel" id="edit-panel">
-  <div class="edit-handle"></div>
-  <div style="font-size:18px;font-weight:700;color:#4a148c;margin-bottom:20px">✏️ Personalise Everything</div>
+  <div class="edit-panel-header">
+    <div style="font-size:16px;font-weight:700;color:#4a148c">✏️ Personalise Everything</div>
+    <button class="ep-close" onclick="closeEdit()">✕</button>
+  </div>
+  <div class="edit-panel-body">
 
   <div class="esec" style="border-top:none;margin-top:0;padding-top:0">💌 Wish Card</div>
   <label class="el">Birthday Heading</label>
@@ -445,8 +477,9 @@ i hope today you feel celebrated. i hope you eat something delicious that you di
   <label class="el">Finale Message</label>
   <textarea class="eta" id="e-fmsg">"here's to you — to another year of laughter, softness, and being completely, utterly loved."</textarea>
 
-  <button class="save-btn" onclick="applyEdits()">💾 Save All Changes</button>
+  <button class="save-btn" onclick="applyEdits()">💾 Apply Changes</button>
   <div style="height:24px"></div>
+  </div>
 </div>
 
 <script>
@@ -874,11 +907,244 @@ document.addEventListener('touchend',e=>{
   if(dx>75&&cur>1) goTo(cur-1);
 },{passive:true});
 
+/* ═══ DOWNLOAD ═══ */
+function buildSaveHTML(){
+  const clone = document.documentElement.cloneNode(true);
+  // remove action bar and edit panel from saved file
+  ['#action-bar','#cloud-link-box','.edit-fab','#overlay','#edit-panel'].forEach(sel=>{
+    const el=clone.querySelector(sel); if(el) el.remove();
+  });
+  // embed album photos
+  photos.forEach((ph,i)=>{
+    if(!ph.src) return;
+    const imgs=clone.querySelectorAll('.alb');
+    // embed into data array in script
+  });
+  // patch scripts to inject saved data
+  const dataScript = clone.ownerDocument ? clone.ownerDocument.createElement('script') : document.createElement('script');
+  // inject current state
+  const stateJson = JSON.stringify({
+    wishName: document.getElementById('wish-name').textContent,
+    wishMsg:  document.getElementById('wish-message').textContent,
+    songTitle:document.getElementById('song-title').textContent,
+    songNote: document.getElementById('song-note').textContent,
+    cardMsg:  document.getElementById('card-message').textContent,
+    greeting: document.getElementById('letter-greeting').textContent,
+    letterFrom:document.getElementById('letter-from').textContent,
+    letterHTML:document.getElementById('letter-body').innerHTML,
+    finalTitle:document.getElementById('final-title').textContent,
+    finalMsg:  document.getElementById('final-msg').textContent,
+    photoCaps: photos.map(p=>p.cap),
+    photoSrcs: photos.map(p=>p.src||null),
+    polCaps:   pols.map(p=>p.cap),
+    polSrcs:   pols.map(p=>p.src||null),
+    quiz:      quizData.map(q=>({q:q.q,correct:q.correct,wrong:q.wrong}))
+  });
+  // Build clean saved file with data injected
+  const htmlStr = buildSavedFile(stateJson);
+  return htmlStr;
+}
+
+function buildSavedFile(stateJson){
+  // We simply inject a script at the end of body that applies saved state on load
+  const s = JSON.parse(stateJson);
+  const injectScript = `
+<script>
+window.addEventListener('DOMContentLoaded',function(){
+  var S=${stateJson};
+  var wn=document.getElementById('wish-name');     if(wn) wn.textContent=S.wishName;
+  var wm=document.getElementById('wish-message');  if(wm) wm.textContent=S.wishMsg;
+  var st=document.getElementById('song-title');    if(st) st.textContent=S.songTitle;
+  var sn=document.getElementById('song-note');     if(sn) sn.textContent=S.songNote;
+  var cm=document.getElementById('card-message');  if(cm) cm.textContent=S.cardMsg;
+  var lg=document.getElementById('letter-greeting');if(lg) lg.textContent=S.greeting;
+  var lf=document.getElementById('letter-from');   if(lf) lf.textContent=S.letterFrom;
+  var lb=document.getElementById('letter-body');   if(lb) lb.innerHTML=S.letterHTML;
+  var ft=document.getElementById('final-title');   if(ft) ft.textContent=S.finalTitle;
+  var fm=document.getElementById('final-msg');     if(fm) fm.textContent=S.finalMsg;
+  // photos & pols
+  if(window.photos&&S.photoCaps){S.photoCaps.forEach(function(c,i){photos[i].cap=c;});S.photoSrcs.forEach(function(s,i){if(s)photos[i].src=s;});renderPhoto();}
+  if(window.pols&&S.polCaps){S.polCaps.forEach(function(c,i){pols[i].cap=c;});S.polSrcs.forEach(function(s,i){if(s)pols[i].src=s;});buildPols();}
+  if(window.quizData&&S.quiz){S.quiz.forEach(function(q,i){quizData[i].q=q.q;quizData[i].correct=q.correct;quizData[i].wrong=q.wrong;});}
+  // hide action bar and edit fab from recipient view
+  var ab=document.getElementById('action-bar'); if(ab) ab.style.display='none';
+  var ef=document.querySelector('.edit-fab');   if(ef) ef.style.display='none';
+  var ep=document.getElementById('edit-panel'); if(ep) ep.style.display='none';
+  var ov=document.getElementById('overlay');    if(ov) ov.style.display='none';
+  var cl=document.getElementById('cloud-link-box'); if(cl) cl.style.display='none';
+});
+<\/script>`;
+  const clone = document.documentElement.cloneNode(true);
+  // inject state script before </body>
+  const body = clone.querySelector('body');
+  if(body){ const tmp=document.createElement('div'); tmp.innerHTML=injectScript; body.appendChild(tmp.firstChild); }
+  return '<!DOCTYPE html>\n'+clone.outerHTML;
+}
+
+function downloadBirthday(){
+  showToast('⏳ Preparing download…');
+  setTimeout(()=>{
+    try{
+      const html = buildSaveHTML();
+      const blob = new Blob([html],{type:'text/html'});
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href=url; a.download='birthday-surprise.html';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url),3000);
+      showToast('✅ Downloaded! Send the file to them 💌');
+    }catch(e){ showToast('❌ Error: '+e.message); }
+  },100);
+}
+
+function shareWhatsApp(){
+  const name = document.getElementById('wish-name').textContent || 'you';
+  showToast('⏳ Preparing file…');
+  setTimeout(()=>{
+    try{
+      const html = buildSaveHTML();
+      const blob = new Blob([html],{type:'text/html'});
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href=url; a.download='birthday-surprise.html';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url),3000);
+    }catch(e){}
+    const msg = `🎂 Happy Birthday, ${name}!\n\nI made you something special 💌\nOpen the downloaded HTML file to see your birthday surprise! 🌸\n\n✨ Made with love`;
+    setTimeout(()=>{
+      window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+    },800);
+    showToast('📲 File downloaded! Attach it in WhatsApp 💬');
+  },100);
+}
+
+/* ═══ FIREBASE CLOUD SAVE ═══ */
+const FB_CONFIG = {
+  apiKey:"AIzaSyAqRxptn8HmdGCKHvUzF8-s0o8qsFAA_2I",
+  authDomain:"occasion-studio.firebaseapp.com",
+  projectId:"occasion-studio",
+  storageBucket:"occasion-studio.firebasestorage.app",
+  messagingSenderId:"1099012722492",
+  appId:"1:1099012722492:web:aadf5e39cb81a58cfcd839"
+};
+const FB_BASE = `https://firestore.googleapis.com/v1/projects/${FB_CONFIG.projectId}/databases/(default)/documents`;
+
+function gatherData(){
+  return {
+    wishName:  document.getElementById('wish-name').textContent,
+    wishMsg:   document.getElementById('wish-message').textContent,
+    songTitle: document.getElementById('song-title').textContent,
+    songNote:  document.getElementById('song-note').textContent,
+    cardMsg:   document.getElementById('card-message').textContent,
+    greeting:  document.getElementById('letter-greeting').textContent,
+    letterFrom:document.getElementById('letter-from').textContent,
+    letterHTML:document.getElementById('letter-body').innerHTML,
+    finalTitle:document.getElementById('final-title').textContent,
+    finalMsg:  document.getElementById('final-msg').textContent,
+    photoCaps: photos.map(p=>p.cap),
+    photoSrcs: photos.map(p=>p.src||''),
+    polCaps:   pols.map(p=>p.cap),
+    polSrcs:   pols.map(p=>p.src||''),
+    quiz:      JSON.stringify(quizData.map(q=>({q:q.q,correct:q.correct,wrong:q.wrong}))),
+    savedAt:   new Date().toISOString()
+  };
+}
+
+function toFirestore(obj){
+  const fields={};
+  Object.entries(obj).forEach(([k,v])=>{
+    if(Array.isArray(v)) fields[k]={arrayValue:{values:v.map(s=>({stringValue:s||''}))}};
+    else fields[k]={stringValue:String(v||'')};
+  });
+  return {fields};
+}
+
+async function saveToCloud(){
+  showToast('☁️ Saving to cloud…');
+  const data = gatherData();
+  const docId = 'bd_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  try{
+    const res = await fetch(`${FB_BASE}/birthday/${docId}?key=${FB_CONFIG.apiKey}`,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(toFirestore(data))
+    });
+    if(!res.ok) throw new Error('Firebase error '+res.status);
+    const shareUrl = `${location.origin}${location.pathname}?bd=${docId}`;
+    const box = document.getElementById('cloud-link-box');
+    document.getElementById('cloud-url').value = shareUrl;
+    box.style.display='block';
+    showToast('✅ Saved! Copy the link below 🔗');
+  }catch(e){
+    showToast('❌ Could not save: '+e.message);
+  }
+}
+
+function copyCloudLink(){
+  const u = document.getElementById('cloud-url').value;
+  navigator.clipboard.writeText(u).then(()=>showToast('✅ Link copied! Share it 💌')).catch(()=>{
+    document.getElementById('cloud-url').select();
+    document.execCommand('copy');
+    showToast('✅ Link copied!');
+  });
+}
+
+/* ═══ LOAD FROM CLOUD ON PAGE OPEN ═══ */
+async function loadFromCloud(docId){
+  showToast('⏳ Loading your birthday surprise…');
+  try{
+    const res = await fetch(`${FB_BASE}/birthday/${docId}?key=${FB_CONFIG.apiKey}`);
+    if(!res.ok) throw new Error('Not found');
+    const doc = await res.json();
+    const f = doc.fields;
+    const g = (k)=> f[k]?.stringValue||'';
+    const ga= (k)=> (f[k]?.arrayValue?.values||[]).map(v=>v.stringValue||'');
+
+    const wn=document.getElementById('wish-name');     if(wn) wn.textContent=g('wishName');
+    const wm=document.getElementById('wish-message');  if(wm) wm.textContent=g('wishMsg');
+    const st=document.getElementById('song-title');    if(st) st.textContent=g('songTitle');
+    const sn=document.getElementById('song-note');     if(sn) sn.textContent=g('songNote');
+    const cm=document.getElementById('card-message');  if(cm) cm.textContent=g('cardMsg');
+    const lg=document.getElementById('letter-greeting');if(lg) lg.textContent=g('greeting');
+    const lf=document.getElementById('letter-from');   if(lf) lf.textContent=g('letterFrom');
+    const lb=document.getElementById('letter-body');   if(lb) lb.innerHTML=g('letterHTML');
+    const ft=document.getElementById('final-title');   if(ft) ft.textContent=g('finalTitle');
+    const fm2=document.getElementById('final-msg');    if(fm2) fm2.textContent=g('finalMsg');
+
+    const pCaps=ga('photoCaps'), pSrcs=ga('photoSrcs');
+    pCaps.forEach((c,i)=>{if(photos[i]){photos[i].cap=c;}});
+    pSrcs.forEach((s,i)=>{if(photos[i]&&s)photos[i].src=s;});
+    renderPhoto();
+
+    const polCaps=ga('polCaps'), polSrcs=ga('polSrcs');
+    polCaps.forEach((c,i)=>{if(pols[i])pols[i].cap=c;});
+    polSrcs.forEach((s,i)=>{if(pols[i]&&s)pols[i].src=s;});
+    buildPols();
+
+    try{const qz=JSON.parse(g('quiz')||'[]');qz.forEach((q,i)=>{if(quizData[i]){quizData[i].q=q.q;quizData[i].correct=q.correct;quizData[i].wrong=q.wrong;}});}catch(e){}
+
+    // hide editor for recipient
+    const ab=document.getElementById('action-bar'); if(ab) ab.style.display='none';
+    const ef=document.querySelector('.edit-fab');   if(ef) ef.style.display='none';
+    const ep=document.getElementById('edit-panel'); if(ep) ep.style.display='none';
+    showToast('🎂 Birthday surprise loaded!');
+  }catch(e){
+    showToast('❌ Could not load: '+e.message);
+  }
+}
+
 /* ═══ INIT ═══ */
 buildTrail(); updateTrail();
 buildPhotoDots(); renderPhoto();
 buildPols(); buildFlowers();
 fireParticles(1);
+
+// Check if opened via cloud link
+(function(){
+  const params=new URLSearchParams(location.search);
+  const bdId=params.get('bd');
+  if(bdId) loadFromCloud(bdId);
+})();
 </script>
 </body>
 </html>

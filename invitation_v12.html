@@ -567,9 +567,10 @@ body{font-family:var(--body-font);background:var(--bg);color:var(--td);overflow-
   </div>
 
   <button class="apply-btn" onclick="applyAll()">✦ Apply Changes</button>
-  <button class="apply-btn" onclick="saveInvitation()" style="background:#2d6a4f;margin-top:0">💾 Save Invitation</button>
-  <button class="apply-btn" onclick="sendViaWhatsApp()" style="background:#25D366;margin-top:0">📲 Send via WhatsApp</button>
-  <div id="save-status" style="text-align:center;font-size:12px;color:#a0c4a0;padding:0 20px 10px;display:none"></div>
+  <button class="apply-btn" onclick="saveInvitation()" style="background:#2d6a4f;margin-top:0">💾 Download Invitation</button>
+  <button class="apply-btn" onclick="sendViaWhatsApp()" style="background:#25D366;margin-top:0">📲 Download + WhatsApp</button>
+  <button class="apply-btn" onclick="saveInviteToCloud()" style="background:#1a73e8;margin-top:0">☁️ Save Link (Cloud)</button>
+  <div id="save-status" style="text-align:center;font-size:12px;color:#a0c4a0;padding:0 20px 10px;display:none;word-break:break-all"></div>
 </div>
 
 <!-- ═══════════════════════════════
@@ -1374,10 +1375,7 @@ function saveInvitation(){
   status.style.display = 'block';
   status.textContent = '⏳ Preparing your invitation…';
 
-  // Clone the full document HTML
   const clone = document.documentElement.cloneNode(true);
-
-  // Remove admin panel elements from the clone
   const adminPanel = clone.querySelector('#admin-panel');
   if(adminPanel) adminPanel.remove();
   const adminBtn = clone.querySelector('#admin-btn');
@@ -1385,15 +1383,11 @@ function saveInvitation(){
   const waBtn = clone.querySelector('#wa-btn');
   if(waBtn) waBtn.remove();
 
-  // In the clone, reset the invitation page to be hidden (envelope shows first)
   const invPageClone = clone.querySelector('#invite-page');
   if(invPageClone){ invPageClone.style.opacity='0'; }
-
-  // In the clone, ensure envelope is shown
   const envClone = clone.querySelector('#env-screen');
   if(envClone){ envClone.style.display='flex'; envClone.style.opacity='1'; envClone.classList.remove('hidden'); }
 
-  // Embed hero photo as base64 if present
   const heroImg = document.querySelector('#photo-inner img');
   if(heroImg && heroImg.src && heroImg.src.startsWith('data:')){
     const cloneHeroImg = clone.querySelector('#photo-inner img');
@@ -1402,7 +1396,6 @@ function saveInvitation(){
     if(cloneRing) cloneRing.classList.add('show');
   }
 
-  // Embed gallery photos as base64
   for(let i=0;i<4;i++){
     const slot = document.getElementById('gs'+i);
     const img = slot ? slot.querySelector('img') : null;
@@ -1412,37 +1405,27 @@ function saveInvitation(){
     }
   }
 
-  // Patch applyAll in the saved file — remove the admin re-open logic (no admin in saved)
-  // Also patch toggleAdmin to be a no-op
   const scripts = clone.querySelectorAll('script');
   scripts.forEach(s => {
-    if(s.src) return; // skip external
-    // Neutralize toggleAdmin
+    if(s.src) return;
     s.textContent = s.textContent.replace(
       /function toggleAdmin\(\)\{[^}]*\}/,
       'function toggleAdmin(){}'
     );
   });
 
-  // Build the final HTML string
   const htmlStr = '<!DOCTYPE html>\n' + clone.outerHTML;
-
-  // Save blob for WhatsApp send
   lastSavedBlob = new Blob([htmlStr], {type:'text/html'});
   const n1 = document.getElementById('n1').value || 'Invitation';
   lastSavedFilename = n1.replace(/\s+/g,'-') + '-invite.html';
 
-  // Trigger download
   const url = URL.createObjectURL(lastSavedBlob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = lastSavedFilename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  a.href = url; a.download = lastSavedFilename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url), 3000);
 
-  status.textContent = '✅ Saved! File downloaded. Now tap "Send via WhatsApp" to share it.';
+  status.textContent = '✅ Downloaded! Now tap "Send via WhatsApp" to share.';
   setTimeout(()=>{ status.style.display='none'; }, 6000);
 }
 
@@ -1452,31 +1435,76 @@ function sendViaWhatsApp(){
   const n2 = document.getElementById('n2').value;
   const waText = document.getElementById('wa-msg') ? document.getElementById('wa-msg').value : '';
 
-  // If blob exists, re-download it so they have the file fresh to attach
   if(lastSavedBlob){
     const url = URL.createObjectURL(lastSavedBlob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = lastSavedFilename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    a.href = url; a.download = lastSavedFilename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
     setTimeout(()=>URL.revokeObjectURL(url), 3000);
+  } else {
+    saveInvitation();
   }
 
-  // Instruction message for WhatsApp
   const names = n2 ? `${n1} & ${n2}` : n1;
   const msg = waText || `🎉 You're invited!\n\nPlease open the attached HTML file to see the full invitation from ${names}.\n\nWith love ❤️`;
 
-  // Open WhatsApp with the message — user attaches the downloaded file manually
   setTimeout(()=>{
     window.open(`https://wa.me/?text=${encodeURIComponent(msg + '\n\n📎 Attach the downloaded invitation file to this chat!')}`, '_blank');
   }, 800);
 
   const status = document.getElementById('save-status');
   status.style.display = 'block';
-  status.textContent = '📲 File downloaded! In WhatsApp, tap the 📎 attach button → choose the file.';
+  status.textContent = '📲 File downloaded! In WhatsApp, tap 📎 → choose the file → send.';
   setTimeout(()=>{ status.style.display='none'; }, 8000);
+}
+
+/* ─── FIREBASE CLOUD SAVE ─── */
+const INV_FB_KEY = 'AIzaSyAqRxptn8HmdGCKHvUzF8-s0o8qsFAA_2I';
+const INV_PROJECT = 'occasion-studio';
+const INV_FB_BASE = `https://firestore.googleapis.com/v1/projects/${INV_PROJECT}/databases/(default)/documents`;
+
+function gatherInviteData(){
+  const fields={};
+  const strIds=['n1','n2','hero-date','hero-venue','hero-time','hero-n1','hero-n2',
+    'detail-date','detail-time','detail-venue','detail-address','detail-dress',
+    'detail-note','scratch-text','wa-msg'];
+  strIds.forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) fields[id]={stringValue:el.value||el.textContent||''};
+  });
+  fields['occ']={stringValue:document.body.className||''};
+  fields['savedAt']={stringValue:new Date().toISOString()};
+  // hero photo
+  const heroImg=document.querySelector('#photo-inner img');
+  if(heroImg&&heroImg.src&&heroImg.src.startsWith('data:'))
+    fields['heroSrc']={stringValue:heroImg.src.slice(0,500000)};
+  return {fields};
+}
+
+async function saveInviteToCloud(){
+  const status=document.getElementById('save-status');
+  status.style.display='block';
+  status.textContent='☁️ Saving to cloud…';
+  const docId='inv_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  try{
+    const res=await fetch(`${INV_FB_BASE}/invitations/${docId}?key=${INV_FB_KEY}`,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(gatherInviteData())
+    });
+    if(!res.ok) throw new Error('Firebase '+res.status);
+    const shareUrl=`${location.origin}${location.pathname}?inv=${docId}`;
+    navigator.clipboard.writeText(shareUrl).catch(()=>{});
+    status.textContent='✅ Saved! Link copied: '+shareUrl;
+    // also open WA with cloud link
+    const n1=document.getElementById('n1')?.value||'the hosts';
+    const waMsg=`🎉 You're invited!\n\nOpen this link to see your invitation:\n${shareUrl}\n\nWith love ❤️`;
+    setTimeout(()=>window.open('https://wa.me/?text='+encodeURIComponent(waMsg),'_blank'),600);
+    setTimeout(()=>{ status.style.display='none'; },10000);
+  }catch(e){
+    status.textContent='❌ Cloud save failed: '+e.message+'. Use Download instead.';
+    setTimeout(()=>{ status.style.display='none'; },6000);
+  }
 }
 
 /* ─── RSVP ─── */
